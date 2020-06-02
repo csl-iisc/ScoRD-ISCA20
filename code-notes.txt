@@ -1,0 +1,994 @@
+nvcc -ptx -Xptxas -flcm=ca -arch=compute_60 --cudart=shared t2.cu
+export PTX_SIM_MODE_FUNC=0
+nvcc -arch=sm_60 --cudart=shared t4.cu   && ./a.out
+
+=/////////////////////////////////////////////////////
+
+
+
+
+
+
+
+in tgpgpu_sim::next_clock_domain(void)
+
+src/gpgpusim_entrypoint.cc
+
+
+
+void start_sim_thread(int api)
+{
+    if( g_sim_done ) {
+        g_sim_done = false;
+        if( api == 1 ) {
+           pthread_create(&g_simulation_thread,NULL,gpgpu_sim_thread_concurrent,NULL);
+        } else {
+           pthread_create(&g_simulation_thread,NULL,gpgpu_sim_thread_sequential,NULL);
+        }
+    }
+}
+
+CUDA runs in concurrent mode
+OPENCL in sequential mode
+pthread_create(&g_simulation_thread,NULL,gpgpu_sim_thread_concurrent,NULL);
+
+nnoremap ft    <esc>:cs f t <cword><return>
+
+MEMBAR_OP
+OP_DEF( BAR_OP       ,bar_impl,"bar",1,3)
+OP_DEF( MEMBAR_OP        ,membar_impl,"membar",1,3)
+
+
+// the following are operations the timing model can see 
+enum uarch_op_t {
+   BARRIER_OP,
+   MEMORY_BARRIER_OP,
+   ...
+}
+
+
+
+---
+(gdb) bt
+#0  0x00007ffff7687830 in atom_impl(ptx_instruction const*, ptx_thread_info*)@plt ()
+   from /home/alvin/ws/limonite2/gsd/lib/gcc-5.4.0/cuda-8000/debug/libcudart.so.8.0
+#1  0x00007ffff76e5111 in ptx_thread_info::ptx_exec_inst (this=0x7ffff0024180, inst=..., lane_id=0)
+       at opcodes.def:46
+#2  0x00007ffff791d504 in core_t::execute_warp_inst_t (this=0x98e0d0, inst=..., warpId=1)
+           at abstract_hardware_model.cc:1097
+#3  0x00007ffff77c824e in shader_core_ctx::func_exec_inst (this=0x98e0d0, inst=...) at shader.cc:846
+#4  0x00007ffff77c8409 in shader_core_ctx::issue_warp (this=0x98e0d0, pipe_reg_set=...,
+               next_inst=0x6e98410, active_mask=std::bitset = {...}, warp_id=1, sch_id=1) at shader.cc:864
+#5  0x00007ffff77c9060 in scheduler_unit::cycle (this=0x9a4d70) at shader.cc:1045
+#6  0x00007ffff77c85ae in shader_core_ctx::issue (this=0x98e0d0) at shader.cc:884
+#7  0x00007ffff77d1771 in shader_core_ctx::cycle (this=0x98e0d0) at shader.cc:2990
+#8  0x00007ffff77d504d in simt_core_cluster::core_cycle (this=0x98e060) at shader.cc:3746
+#9  0x00007ffff77a6308 in gpgpu_sim::cycle (this=0x6290a0) at gpu-sim.cc:1613
+#10 0x00007ffff7930b8d in gpgpu_sim_thread_concurrent () at gpgpusim_entrypoint.cc:148
+#11 0x00007ffff61fa6ba in start_thread (arg=0x7ffff6196700) at pthread_create.c:333
+#12 0x00007ffff6a3a41d in clone () at ../sysdeps/unix/sysv/linux/x86_64/clone.S:109
+
+---
+
+simt_core_cluster::simt_core_cluster( class gpgpu_sim *gpu, 
+    m_core = new shader_core_ctx*[ config->n_simt_cores_per_cluster ];
+    m_core[i] = new shader_core_ctx(gpu,this,sid,m_cluster_id,config,mem_config,stats);
+    m_core_sim_order.push_back(i); 
+
+
+void shader_core_ctx::cycle()
+
+void simt_core_cluster::core_cycle()
+
+
+void ptx_instruction::set_opcode_and_latency()
+	set_fp_or_int_archop();
+	set_mul_div_or_other_archop();
+
+
+void ptx_instruction::pre_decode()
+    void ptx_instruction::set_opcode_and_latency()
+    set_fp_or_int_archop();
+    set_mul_div_or_other_archop();
+    void ptx_instruction::set_bar_type()
+
+
+
+
+---
+(gdb) bt
+#0  0x00007ffff7687020 in function_info::do_pdom()@plt ()
+   from /home/alvin/ws/limonite2/gsd/lib/gcc-5.4.0/cuda-8000/debug/libcudart.so.8.0
+#1  0x00007ffff76b8238 in cudaLaunch (
+       hostFun=0x400f8a <kmain(unsigned int*)> "UH\211\345H\203\354\020H\211}\370H\213E\370H\211\307\350\243\377\377\377\220\311\303UH\211\345H\203\354\020H\211}\370H\213E\370H\211\005t! ")
+    at cuda_runtime_api.cc:1424
+#2  0x0000000000401106 in cudaError cudaLaunch<char>(char*) ()
+#3  0x0000000000400f85 in __device_stub__Z5kmainPj(unsigned int*) ()
+#4  0x0000000000400fa2 in kmain(unsigned int*) ()
+#5  0x0000000000400df3 in main ()
+
+---
+
+
+char *mode = getenv("PTX_SIM_MODE_FUNC");
+
+("PTX_SIM_DEBUG");
+("PTX_SIM_DEBUG_THREAD_UID");
+("PTX_SIM_DEBUG_PC");
+
+
+void shader_core_ctx::issue()
+    void scheduler_unit::cycle()
+        if( m_mem_out->has_free() ) {
+            m_shader->issue_warp(*m_mem_out,pI,active_mask,warp_id);
+        }
+
+---
+
+void shader_core_ctx::issue_warp( register_set& pipe_reg_set, const warp_inst_t* next_inst, const active_mask_t &active_mask, unsigned warp_id )
+
+---
+
+void scheduler_unit::cycle()
+    if( pc != pI->pc ) { }
+    else {
+        assert( warp(warp_id).inst_in_pipeline() );
+        if ( (pI->op == LOAD_OP) || (pI->op == STORE_OP) || (pI->op == MEMORY_BARRIER_OP) ) {
+            if( m_mem_out->has_free() ) {
+                m_shader->issue_warp(*m_mem_out,pI,active_mask,warp_id);
+                issued++;
+                issued_inst=true;
+                warp_inst_issued = true;
+            }
+        }
+
+
+
+---
+
+    int membar_level() const { return m_membar_level; }
+
+---
+
+(gdb) b cudaLaunch
+Breakpoint 1 at 0x400b50
+(gdb) r
+
+(gdb) b shd_warp_t::get_membar() const
+Breakpoint 2 at 0x7ffff77d793e: file shader.h, line 173.
+(gdb) b shd_warp_t::set_membar()
+Breakpoint 3 at 0x7ffff77d7916: file shader.h, line 171.
+(gdb) b shd_warp_t::clear_membar()
+Breakpoint 4 at 0x7ffff77d792a: file shader.h, line 172.
+(gdb) c
+
+
+
+
+Thread 2 "a.out" hit Breakpoint 2, shd_warp_t::get_membar (this=0x66c850) at shader.h:173
+173     bool get_membar() const { return m_membar; }
+(gdb) bt
+#0  shd_warp_t::get_membar (this=0x66c850) at shader.h:173
+#1  0x00007ffff77d2d3e in shader_core_ctx::warp_waiting_at_mem_barrier (this=0x6577f0, warp_id=1)
+    at shader.cc:3293
+#2  0x00007ffff77d337c in shd_warp_t::waiting (this=0x66c850) at shader.cc:3403
+#3  0x00007ffff77c897e in scheduler_unit::cycle (this=0x66e510) at shader.cc:1010
+#4  0x00007ffff77c85ae in shader_core_ctx::issue (this=0x6577f0) at shader.cc:884
+#5  0x00007ffff77d1771 in shader_core_ctx::cycle (this=0x6577f0) at shader.cc:2990
+#6  0x00007ffff77d504d in simt_core_cluster::core_cycle (this=0x657760) at shader.cc:3746
+#7  0x00007ffff77a6308 in gpgpu_sim::cycle (this=0x6290a0) at gpu-sim.cc:1613
+#8  0x00007ffff7930b8d in gpgpu_sim_thread_concurrent () at gpgpusim_entrypoint.cc:148
+#9  0x00007ffff61fa6ba in start_thread (arg=0x7ffff6196700) at pthread_create.c:333
+#10 0x00007ffff6a3a41d in clone () at ../sysdeps/unix/sysv/linux/x86_64/clone.S:109
+    (gdb) l
+
+
+
+
+--
+GEM5
+
+commit 4eadb722811f2b392432178c8b8bc75dff08f641
+Author: Joel Hestness <jthestness@gmail.com>
+Date:   Sat Dec 13 10:24:39 2014 -0600
+
+Atomics: Implement in CudaCore, ShaderLSQ, WarpInstBuffer
+
+All the code required to accept atomic instructions from GPGPU-Sim, convert
+the parameters and data in CudaCore, and send and receive memory accesses
+between the ShaderLSQ and Ruby cache hierarchy. Atomic operation requests (on
+        a per-lane basis) are packaged into a coalesced access, which Ruby handles.
+
+From testing, we have established that Fermi sends up to 3 atomic requests to
+sublines (32B) of the L2 cache, and accesses to separate sublines of the same
+line can proceed in parallel. Based on this, package an appropriate number of
+atomic requests into CoalescedAccess to get appropriate bandwidth and latency.
+
+NOTES:
+1) This patch requires modification to the VI_hammer protocol for correct
+atomic access handling and timing. It also requires a small patch on gem5 to
+allow Ruby to complete the memory accesses in the hit callback.
+
+---
+gem5-gpu/src/gpu/shader_lsq.cc
+
+ShaderLSQ
+----
+
+
+
+
+
+    if ( m_config->gpgpu_perfect_mem ) {
+        m_icnt = new perfect_memory_interface(this,cluster);
+    } else {
+        m_icnt = new shader_memory_interface(this,cluster);
+    }
+
+
+class perfect_memory_interface : public mem_fetch_interface {
+
+
+
+gpgpu_sim_thread_concurrent
+bool stream_operation::do_operation( gpgpu_sim *gpu )
+
+
+void *gpgpu_sim_thread_concurrent(void*)
+    gpgpu_cuda_ptx_sim_main_func
+        for each cta,
+            functionalCoreSim cta(....);
+            cta.execute
+
+
+
+bool stream_operation::do_operation( gpgpu_sim *gpu )
+    case stream_kernel_launch:
+        if( m_sim_mode ) { //Functional Sim
+            gpu->functional_launch( m_kernel );
+        }
+
+
+
+
+
+----
+(m_core->get_config()->gmem_skip_L1D && (CACHE_L1 != inst.cache_op))
+
+stall_cond = process_memory_access_queue_l1cache(m_L1D,inst);
+
+enum mem_stage_stall_type {
+   NO_RC_FAIL = 0, 
+   BK_CONF,
+   MSHR_RC_FAIL,
+   ICNT_RC_FAIL,
+   COAL_STALL,
+   TLB_STALL,
+   DATA_PORT_STALL,
+   WB_ICNT_RC_FAIL,
+   WB_CACHE_RSRV_FAIL,
+   N_MEM_STAGE_STALL_TYPE
+};
+
+if(m_config->m_L1D_config.l1_latency > 0)
+
+if (inst.space.is_local()) 
+    access_type = (iswrite)?L_MEM_ST:L_MEM_LD;
+    else 
+    access_type = (iswrite)?G_MEM_ST:G_MEM_LD;
+    }
+----
+
+    } else if ( m_shader->warp_waiting_at_mem_barrier(m_warp_id) ) {
+---
+
+void shader_core_ctx::issue_warp( register_set& pipe_reg_set, const warp_inst_t* next_inst, const active_mask_t &active_mask, unsigned warp_id, unsigned sch_id )
+
+    }else if( next_inst->op == MEMORY_BARRIER_OP ){
+        m_warp[warp_id].set_membar();
+    }
+
+---
+// Flushes all content of the cache to memory
+
+void shader_core_ctx::cache_flush()
+{
+   m_ldst_unit->flush();
+}
+
+void shader_core_ctx::cache_invalidate()
+{
+   m_ldst_unit->invalidate();
+}
+
+
+---
+#0  membar_impl (pI=0x6e99f50, thread=0x7ffff0010e40) at instructions.cc:3665
+
+
+(gdb) p pI->to_string()
+$4 = " PC=0x080 (hrace8.1.sm_60.ptx:52) membar.cta;"
+---
+
+
+
+--------------------------------------------------------------------------------
+
+
+
+
+GPGPUSim_Init          defined in both cuda-runtime / opencl-runtime
+    start_sim_thread
+        gpgpu_sim_thread_sequential           ==> used by OpenCL
+        gpgpu_sim_thread_concurrent           ==> used by CUDA ******
+
+
+gpgpu_sim_thread_concurrent           ==> used by CUDA ******
+    gpgpu_cuda_ptx_sim_main_func(*kernel);              // if FUNC
+    while !g_sim_done
+        while stream has ops
+            if( g_the_gpu->active())
+                g_the_gpu->cycle();
+
+
+
+void gpgpu_sim::dump_pipeline( int mask, int s, int m ) const
+
+
+
+
+
+(gdb) b cudaLaunch
+(gdb) r
+(gdb) b functionalCoreSim::executeWarp
+(gdb) b core_t::execute_warp_inst_t
+(gdb) b shader_core_ctx::func_exec_inst
+
+
+
+
+(gdb) b shader_core_ctx::fetch
+
+
+read_input_size
+
+############################
+
+bool m_isatomic;
+bypassL1D
+
+void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
+   if ( pI->get_opcode() == ATOM_OP ) {
+      insn_memaddr = last_eaddr();
+      insn_space = last_space();
+      inst.add_callback( lane_id, last_callback().function, last_callback().instruction, this,true /*atomic*/);
+      unsigned to_type = pI->get_type();
+      insn_data_size = datatype2size(to_type);
+   }
+
+
+dram_callback_t last_callback() const { return m_last_dram_callback;}
+
+
+
+void atom_impl( const ptx_instruction *pI, ptx_thread_info *thread )
+   thread->m_last_dram_callback.function = atom_callback;
+
+
+m_membar_level
+
+  case GLOBAL_OPTION:
+     m_membar_level = GLOBAL_OPTION;
+     break;
+  case CTA_OPTION:
+     m_membar_level = CTA_OPTION;
+     break;
+  case SYS_OPTION:
+     m_membar_level = SYS_OPTION;
+     break;
+
+
+
+
+build/gcc-5.4.0/cuda-8000/debug/cuda-sim/ptx.tab.h
+198:    CTA_OPTION = 408,
+
+build/gcc-5.4.0/cuda-8000/debug/cuda-sim/ptx.tab.c
+259:    CTA_OPTION = 408,
+714:  "ALL_OPTION", "BALLOT_OPTION", "GLOBAL_OPTION", "CTA_OPTION",
+2614:    { add_option(CTA_OPTION); }
+
+build/gcc-5.4.0/cuda-8000/debug/cuda-sim/ptx_parser_decode.def
+151:DEF(CTA_OPTION,"CTA_OPTION")
+
+    GLOBAL_OPTION = 407,
+    CTA_OPTION = 408,
+    SYS_OPTION = 409,
+
+
+src/abstract_hardware_model.cc
+    memory_coalescing_arch_reduce_and_send
+
+void warp_inst_t::memory_coalescing_arch_atomic( bool is_write, mem_access_type access_type )
+
+void warp_inst_t::generate_mem_accesses()
+    memory_coalescing_arch_atomic( bool is_write, mem_access_type access_type )
+    memory_coalescing_arch_reduce_and_send
+
+void warp_inst_t::generate_mem_accesses()
+    case global_space: case local_space: case param_space_local:
+    	 if( m_config->gpgpu_coalesce_arch >= 13) {
+            if(isatomic())
+                memory_coalescing_arch_atomic(is_write, access_type);
+            else
+                memory_coalescing_arch(is_write, access_type);
+         } else abort();
+
+        break;
+
+
+
+void warp_inst_t::generate_mem_accesses() ******************
+    m_accessq.push_back( mem_access_t(access_type,a->first,cache_block_size,is_write,a->second, byte_mask, mem_access_sector_mask_t()));
+
+
+
+mem_stage_stall_type ldst_unit::process_memory_access_queue_l1cache( l1_cache *cache, warp_inst_t &inst )
+    inst.accessq_pop_back();
+
+
+shared_cycle()
+constant_cycle
+texture_cycle
+memory_cycle()
+   if( bypassL1D ) {
+   } else {
+       stall_cond = process_memory_access_queue_l1cache(m_L1D,inst);
+   }
+
+
+
+
+bool ldst_unit::memory_cycle( warp_inst_t &inst, mem_stage_stall_type &stall_reason, mem_stage_access_type &access_type )
+
+
+void bar_callback( const inst_t* inst, ptx_thread_info* thread)
+
+mem_fetch* memory_sub_partition::pop() 
+{
+    mem_fetch* mf = m_L2_icnt_queue->pop();
+    m_request_tracker.erase(mf);
+    if ( mf && mf->isatomic() )
+        mf->do_atomic();
+    if( mf && (mf->get_access_type() == L2_WRBK_ACC || mf->get_access_type() == L1_WRBK_ACC) ) {
+        delete mf;
+        mf = NULL;
+    } 
+    return mf;
+}
+
+void core_t::execute_warp_inst_t(warp_inst_t &inst, unsigned warpId)
+    m_thread[tid]->ptx_exec_inst(inst,t);
+
+
+atom_callback_block
+
+        m_per_scalar_thread[lane_id].callback.function = function;
+
+mem_fetch* memory_sub_partition::pop() 
+    mem_fetch* mf = m_L2_icnt_queue->pop();
+    m_request_tracker.erase(mf);
+    if ( mf && mf->isatomic() )
+        mf->do_atomic();
+
+
+(gdb) p this->get_inst()->to_string()
+
+#0  warp_inst_t::do_atomic_block (this=0x660b90, forceDo=true) at
+abstract_hardware_model.cc:248
+
+-gmem_skip_L1D 1   // config
+ bypassL1D = true;         // shader.cc
+
+
+bool     m_membar_gl;
+    void set_membar_gl() { m_membar_gl=true; }
+    void clear_membar_gl() { m_membar_gl=false; }
+    bool get_membar_gl() const { return m_membar_gl; }
+
+stall_cond = process_memory_access_queue_l1cache(m_L1D,inst);      // XXX
+void ldst_unit::L1_latency_queue_cycle()
+bool shd_warp_t::hardware_done() const
+bool stores_done() const { return m_stores_outstanding == 0; }
+void shader_core_ctx::store_ack( class mem_fetch *mf )
+    m_warp[warp_id].dec_store_req();
+
+
+void ldst_unit::flush(){
+	// Flush L1D cache
+	m_L1D->flush();
+}
+
+
+if (m_alloc_policy == ON_FILL and m_write_policy == WRITE_BACK) {
+
+--
+bool shader_core_ctx::warp_waiting_at_mem_barrier( unsigned warp_id ) 
+
+./src/gpgpu-sim/gpu-cache.cc:1750
+//TODO: we need write back the flushed data to the upper level
+void tag_array::flush() 
+
+class data_cache : public baseline_cache {
+
+cache_request_status data_cache::wr_hit_wb(new_addr_type addr,
+
+enum cache_request_status tag_array::access( new_addr_type addr ... mem_fetch* mf )
+
+void ptx_thread_info::ptx_exec_inst( warp_inst_t &inst, unsigned lane_id)
+
+src/cuda-sim/memory.cc
+template<unsigned BSIZE> void memory_space_impl<BSIZE>::
+
+
+void core_t::execute_warp_inst_t(warp_inst_t &inst, unsigned warpId)
+            m_thread[tid]->ptx_exec_inst(inst,t);
+
+
+cuda-sim.cc
+void functionalCoreSim::executeWarp(unsigned i, bool &allAtBarrier, bool & someOneLive)
+        execute_warp_inst_t(inst,i);
+
+void shader_core_ctx::func_exec_inst( warp_inst_t &inst )
+    execute_warp_inst_t(inst);
+
+
+   void functional_launch(kernel_info_t * k) {
+
+
+
+/home/alvin/ws/limonite5/gsd/./src/gpgpu-sim/gpu-cache.h
+struct cache_block_t {
+/home/alvin/ws/limonite5/gsd/./src/gpgpu-sim/gpu-cache.cc
+	m_lines = new cache_block_t*[cache_lines_num];
+/home/alvin/ws/limonite5/gsd/./src/gpgpu-sim/gpu-cache.cc
+tag_array::tag_array( cache_config &config,
+
+src/gpgpu-sim/shader.cc
+void shader_core_ctx::issue_warp( register_set& pipe_reg_set, const warp_inst_t* next_inst, const active_mask_t &active_mask, unsigned warp_id, unsigned sch_id )
+
+/home/alvin/ws/limonite5/gsd/./src/gpgpu-sim/gpu-cache.cc
+data_cache::process_tag_probe( bool wr,
+
+src/gpgpu-sim/shader.cc
+    if ( (pI->op == LOAD_OP) || (pI->op == STORE_OP) || (is_mb) ||(pI->op==TENSOR_CORE_LOAD_OP)||(pI->op==TENSOR_CORE_STORE_OP) ) {
+src/gpgpu-sim/shader.cc
+       done = inst.do_atomic_block_deferredwrites(true);
+src/abstract_hardware_model.cc
+bool warp_inst_t::do_atomic_block_deferredwrites(bool forceDo) {
+src/gpgpu-sim/shader.cc
+void shader_core_ctx::checkExecutionStatusAndUpdate(warp_inst_t &inst, unsigned t, unsigned tid)
+
+
+
+b data_cache::process_tag_probe
+
+(gdb) dp_warpinst &mf->m_inst 
+0x00b8 w00[10000000000000000000000000000000]: kmain PC=0x0b8
+(a.1.sm_60.ptx:61) ld.global.u32 %r6, [doneflag0];
+
+
+tag_array::access
+
+#0  tag_array::access (this=0xb25820, addr=256, time=663, idx=@0x7ffff6195994:
+143, wb=@0x7ffff6195a8f: false, evicted=..., 
+    mf=0x7ffff00082a0) at gpu-cache.cc:347
+#1  0x00007ffff778fc34 in baseline_cache::send_read_request (this=0xb25640,
+    addr=256, block_addr=256, cache_index=143, mf=0x7ffff00082a0, 
+        time=663, do_miss=@0x7ffff6195a8e: false, wb=@0x7ffff6195a8f: false,
+        evicted=..., events=..., read_only=false, wa=false)
+    at gpu-cache.cc:1045
+#2  0x00007ffff779182e in data_cache::rd_miss_base (this=0xb25640, addr=256,
+    cache_index=143, mf=0x7ffff00082a0, time=663, events=..., 
+        status=MISS) at gpu-cache.cc:1458
+#3  0x00007ffff7791e33 in data_cache::process_tag_probe (this=0xb25640,
+        wr=false, probe_status=MISS, addr=256, cache_index=143, 
+            mf=0x7ffff00082a0, time=663, events=...) at gpu-cache.cc:1549
+#4  0x00007ffff7791f6e in data_cache::access (this=0xb25640, addr=256,
+            mf=0x7ffff00082a0, time=663, events=...) at gpu-cache.cc:1579
+#5  0x00007ffff779200d in l1_cache::access (this=0xb25640, addr=256,
+            mf=0x7ffff00082a0, time=663, events=...) at gpu-cache.cc:1595
+#6  0x00007ffff77cc906 in ldst_unit::L1_latency_queue_cycle (this=0xae5d10) at
+            shader.cc:1721
+#7  0x00007ffff77cfa4e in ldst_unit::cycle (this=0xae5d10) at shader.cc:2476
+#8  0x00007ffff77cb72c in shader_core_ctx::execute (this=0x99f960) at
+            shader.cc:1474
+#9  0x00007ffff77d24c7 in shader_core_ctx::cycle (this=0x99f960) at
+            shader.cc:3122
+#10 0x00007ffff77d6043 in simt_core_cluster::core_cycle (this=0x99f8f0) at
+            shader.cc:3921
+#11 0x00007ffff77a6ca8 in gpgpu_sim::cycle (this=0x629080) at gpu-sim.cc:1614
+#12 0x00007ffff7930da3 in gpgpu_sim_thread_concurrent () at
+            gpgpusim_entrypoint.cc:148
+#13 0x00007ffff61fa6ba in start_thread (arg=0x7ffff6196700) at
+            pthread_create.c:333
+#14 0x00007ffff6a3a41d in clone () at
+            ../sysdeps/unix/sysv/linux/x86_64/clone.S:109
+
+
+/home/alvin/ws/limonite5/gsd/./src/gpgpu-sim/gpu-cache.cc
+enum cache_request_status tag_array::access( new_addr_type addr, unsigned time, unsigned &idx, bool &wb, evicted_block_info &evicted, mem_fetch* mf )
+    case MISS:
+        m_miss++;
+        shader_cache_access_log(m_core_id, m_type_id, 1); // log cache misses
+        if ( m_config.m_alloc_policy == ON_MISS ) {
+            if( m_lines[idx]->is_modified_line()) {
+                wb = true;
+                evicted.set_info(m_lines[idx]->m_block_addr, m_lines[idx]->get_modified_size());
+            }
+            m_lines[idx]->allocate( m_config.tag(addr), m_config.block_addr(addr), time, mf->get_access_sector_mask());
+        }
+        break;
+------
+/home/alvin/ws/limonite5/gsd/./src/gpgpu-sim/gpu-cache.cc
+            m_lines[idx]->allocate( m_config.tag(addr), m_config.block_addr(addr), time, mf->get_access_sector_mask());
+/home/alvin/ws/limonite5/gsd/./src/gpgpu-sim/gpu-cache.cc
+void baseline_cache::send_read_request(new_addr_type addr, new_addr_type block_addr, unsigned cache_index, mem_fetch *mf,
+
+
+warp_inst_t::get_addr
+warp_inst_t::set_addr
+mem_fetch::set_status
+baseline_cache::send_read_request
+
+IN_SHADER_LDST_RESPONSE_FIFO
+
+
+Thread 2 "a.out" hit Breakpoint 2, mem_fetch::set_status (this=0x7ffff0022950, status=IN_SHADER_LDST_RESPONSE_FIFO, cycle=666)
+    at mem_fetch.cc:102
+102	    m_status = status;
+1: status = IN_SHADER_LDST_RESPONSE_FIFO
+0x0068 w00[10000000000000000000000000000000]: kmain PC=0x068 (a.1.sm_60.ptx:49) ld.global.u32 %r12, [data_x];
+$289 = void
+(gdb) bt
+#0  mem_fetch::set_status (this=0x7ffff0022950, status=IN_SHADER_LDST_RESPONSE_FIFO, cycle=666) at mem_fetch.cc:102
+#1  0x00007ffff77cd6c8 in ldst_unit::fill (this=0x79d9d0, mf=0x7ffff0022950) at shader.cc:1965
+#2  0x00007ffff77d4014 in shader_core_ctx::accept_ldst_unit_response (this=0x6575a0, mf=0x7ffff0022950) at shader.cc:3521
+#3  0x00007ffff77d6b33 in simt_core_cluster::icnt_cycle (this=0x657510) at shader.cc:4096
+#4  0x00007ffff77a65ac in gpgpu_sim::cycle (this=0x629080) at gpu-sim.cc:1543
+#5  0x00007ffff7930da3 in gpgpu_sim_thread_concurrent () at gpgpusim_entrypoint.cc:148
+#6  0x00007ffff61fa6ba in start_thread (arg=0x7ffff6196700) at pthread_create.c:333
+#7  0x00007ffff6a3a41d in clone () at ../sysdeps/unix/sysv/linux/x86_64/clone.S:109
+
+
+shader_core_ctx::accept_ldst_unit_response
+
+#0  mem_fetch::set_status (this=0x7ffff0022950, status=IN_SHADER_LDST_RESPONSE_FIFO, cycle=666) at mem_fetch.cc:102
+#1  0x00007ffff77cd76e in ldst_unit::fill (this=0x79d9d0, mf=0x7ffff0022950) at shader.cc:1965
+#2  0x00007ffff77d407a in shader_core_ctx::accept_ldst_unit_response (this=0x6575a0, mf=0x7ffff0022950) at shader.cc:3522
+#3  0x00007ffff77d6b99 in simt_core_cluster::icnt_cycle (this=0x657510) at shader.cc:4097
+#4  0x00007ffff77a6652 in gpgpu_sim::cycle (this=0x629080) at gpu-sim.cc:1543
+#5  0x00007ffff7930e21 in gpgpu_sim_thread_concurrent () at gpgpusim_entrypoint.cc:148
+#6  0x00007ffff61fa6ba in start_thread (arg=0x7ffff6196700) at pthread_create.c:333
+#7  0x00007ffff6a3a41d in clone () at ../sysdeps/unix/sysv/linux/x86_64/clone.S:109
+(gdb) n
+
+
+mf->get_sid()
+
+ldst_unit::fill
+breakpoint_dummy_ldst_pop_response_fifo
+
+0x038
+0x0e0
+0x0f0  // local
+0x058
+
+0x100 st
+0x118
+
+0x138 ld
+0x158
+
+
+void decode_space(
+
+/home/alvin/ws/limonite5/gsd/./src/gpgpu-sim/l2cache.cc
+void memory_partition_unit::handle_memcpy_to_gpu( size_t addr, unsigned global_subpart_id, mem_access_sector_mask_t mask )
+/home/alvin/ws/limonite5/gsd/./src/gpgpu-sim/l2cache.cc
+memory_sub_partition::memory_sub_partition( unsigned sub_partition_id, 
+/home/alvin/ws/limonite5/gsd/./src/gpgpu-sim/gpu-cache.cc
+data_cache::rd_hit_base( new_addr_type addr,
+
+/home/alvin/ws/limonite5/gsd/./src/gpgpu-sim/gpu-cache.cc
+data_cache::rd_hit_base( new_addr_type addr,
+
+src/gpgpu-sim/mem_fetch.h
+   void set_data_array(unsigned arr[], unsigned size) { 
+
+src/gpgpu-sim/dram.cc
+void dram_t::scheduler_fifo()
+
+src/gpgpu-sim/dram.cc
+void dram_t::cycle()
+
+/home/alvin/ws/limonite5/gsd/./src/gpgpu-sim/gpu-cache.cc
+void baseline_cache::fill(mem_fetch *mf, unsigned time){
+
+
+x_read_data_into_mf
+
+/home/alvin/ws/limonite5/gsd/./src/gpgpu-sim/gpu-cache.cc
+void tag_array::fill( new_addr_type addr, unsigned time, mem_access_sector_mask_t mask )
+
+/home/alvin/ws/limonite5/gsd/./src/gpgpu-sim/gpu-cache.cc
+void baseline_cache::send_read_request(new_addr_type addr, new_addr_type block_addr, unsigned cache_index, mem_fetch *mf,
+
+/home/alvin/ws/limonite5/gsd/./src/gpgpu-sim/l2cache.cc
+    		reqs = breakdown_request_to_sector_requests(m_req);
+
+
+0x7ffff0007fe0
+0x7ffff0005fd0
+
+b mem_fetch.cc:67 if this == 0x7ffff0007fe0
+
+/home/alvin/ws/limonite5/gsd/./src/gpgpu-sim/gpu-cache.cc
+void x_read_data_into_mf(mem_fetch *mf)
+
+src/gpgpu-sim/gpu-cache.h
+    void cblk_read_data()
+
+src/gpgpu-sim/gpu-cache.h
+    void cblk_write_data(mem_access_sector_mask_t mask)
+
+src/gpgpu-sim/gpu-cache.h
+    //void l1d_read_data( new_addr_type addr, unsigned &idx, mem_fetch* mf );
+
+src/gpgpu-sim/gpu-cache.h
+    //void l1d_write_data( new_addr_type addr, unsigned &idx, mem_fetch* mf );
+
+src/gpgpu-sim/mem_fetch.h
+   void set_data_array(unsigned arr[], unsigned size) { 
+
+src/gpgpu-sim/mem_fetch.h
+   unsigned int *get_data_array(void) { return m_data_array; }
+
+src/gpgpu-sim/mem_fetch.h
+   void print_data_array(void) { 
+
+/home/alvin/ws/limonite5/gsd/./src/gpgpu-sim/gpu-cache.cc
+void ta_read_data( new_addr_type addr, unsigned &idx, mem_fetch* mf )
+
+
+x_read_data_into_mf
+
+
+
+cblk_write_data  // during fill
+
+x_write_data_from_mf     // during hit
+
+/home/alvin/ws/limonite5/gsd/./src/gpgpu-sim/gpu-cache.cc
+    enum cache_request_status status = probe(addr,idx,mf);
+
+/home/alvin/ws/limonite5/gsd/./src/gpgpu-sim/gpu-cache.cc
+enum cache_request_status tag_array::access( new_addr_type addr, unsigned time, unsigned &idx, bool &wb, evicted_block_info &evicted, mem_fetch* mf )
+
+/home/alvin/ws/limonite5/gsd/./src/gpgpu-sim/gpu-cache.cc
+data_cache::access( new_addr_type addr,
+
+/home/alvin/ws/limonite5/gsd/./src/gpgpu-sim/gpu-cache.cc
+enum cache_request_status tag_array::access( new_addr_type addr, unsigned time, unsigned &idx, bool &wb, evicted_block_info &evicted, mem_fetch* mf )
+
+
+
+
+/home/alvin/ws/limonite5/gsd/./src/gpgpu-sim/gpu-cache.cc
+data_cache::rd_hit_base( new_addr_type addr,
+
+/home/alvin/ws/limonite5/gsd/./src/gpgpu-sim/gpu-cache.cc
+cache_request_status data_cache::wr_hit_wb(new_addr_type addr, unsigned cache_index, mem_fetch *mf, unsigned time, std::list<cache_event> &events, enum cache_request_status status ){
+
+
+tag_array::access
+data_cache::access
+data_cache::wr_hit_wb
+data_cache::rd_hit_base
+cache_block_t::cblk_read_data
+cache_block_t::cblk_write_data
+warp_inst_t::set_addr
+ld_exec
+
+x_read_from_device_memspace
+x_write_to_device_memspace
+void warp_inst_t::generate_mem_accesses()
+
+   void set_reply()
+   {
+       assert( m_access.get_type() != L1_WRBK_ACC && m_access.get_type() != L2_WRBK_ACC );
+       if( m_type==READ_REQUEST ) {
+           assert( !get_is_write() );
+           m_type = READ_REPLY;
+       } else if( m_type == WRITE_REQUEST ) {
+           assert( get_is_write() );
+           m_type = WRITE_ACK;
+       }
+   }
+src/gpgpu-sim/shader.cc
+void shader_core_ctx::func_exec_inst( warp_inst_t &inst )
+
+src/cuda-sim/instructions.cc
+void ld_exec( const ptx_instruction *pI, ptx_thread_info *thread )
+
+
+memory_space_impl<32u>::read
+
+gpgpu-sim/gpu-cache.h
+
+x_read_from_device_memspace
+x_write_to_device_memspace
+
+void warp_inst_t::generate_mem_accesses()
+void cblk_read_data(mem_fetch *mf)
+void cblk_write_data(mem_fetch *mf)
+void print_data_array(void) {                    // mem_fetch.h
+
+memory_space_impl<BSIZE>::read_single_block     // cuda-sim/memory.cc
+
+breakpoint_dummy()
+
+void shader_core_ctx::func_exec_inst( warp_inst_t &inst )
+    // copy mf->ms = func.ms
+
+
+
+status=IN_CLUSTER_TO_SHADER_QUEUE,
+status=IN_SHADER_LDST_RESPONSE_FIFO,
+status=IN_SHADER_FETCHED,
+
+
+BREAKPOINTS
+cblk_write_data =>   mf->print_data_array
+cblk_read_data =>   mf->print_data_array
+mem_fetch::mem_fetch
+mem_fetch::~mem_fetch
+ld_exec
+ld_exec_alvin
+generate_mem_accesses
+x_read_from_device_memspace
+x_write_to_device_memspace
+
+src/gpgpu-sim/shader.cc
+       stall_cond = process_memory_access_queue_l1cache(m_L1D,inst);      // XXX
+
+src/gpgpu-sim/shader.cc
+   mem_stage_stall_type fail = process_memory_access_queue(m_L1T,inst);
+
+src/gpgpu-sim/gpu-cache.cc
+void tag_array::flush() 
+
+/home/alvin/ws/limonite5/gsd/./src/gpgpu-sim/gpu-cache.h
+    void send_write_request( mem_fetch *mf,
+
+src/gpgpu-sim/gpu-cache.cc
+void data_cache::send_write_request(mem_fetch *mf, cache_event request, unsigned time, std::list<cache_event> &events){
+
+src/gpgpu-sim/gpu-cache.cc
+void baseline_cache::send_read_request(new_addr_type addr, new_addr_type block_addr, unsigned cache_index, mem_fetch *mf,
+
+src/gpgpu-sim/gpu-cache.cc
+            send_write_request(wb, cache_event(WRITE_BACK_REQUEST_SENT, evicted), time, events);
+
+src/gpgpu-sim/gpu-cache.cc
+data_cache::process_tag_probe( bool wr,
+
+src/gpgpu-sim/gpu-cache.cc
+    extra_mf_fields_lookup::iterator e = m_extra_mf_fields.find(mf);
+
+
+ data_cache::flush() at gpu-cache.cc:1149
+ mem_fetch::set_status(mem_fetch_status, unsigned long long) at mem_fetch.cc:110
+  baseline_cache::cycle() at gpu-cache.cc:1025
+  cache_block_t::cblk_write_data(mem_fetch*) at gpu-cache.h:185
+   mem_fetch::~mem_fetch() at mem_fetch.cc:80
+
+
+ldst_unit::L1_latency_queue_cycle
+src/gpgpu-sim/shader.cc
+bool shader_core_ctx::warp_waiting_at_mem_barrier( unsigned warp_id ) 
+
+src/gpgpu-sim/gpu-cache.cc
+data_cache::access( new_addr_type addr,
+
+src/gpgpu-sim/l2cache.cc
+void memory_sub_partition::cache_cycle( unsigned cycle )
+
+src/gpgpu-sim/gpu-cache.cc
+l2_cache::access( new_addr_type addr,
+    return data_cache::access( addr, mf, time, events );
+
+
+src/gpgpu-sim/gpu-cache.cc
+data_cache::access( new_addr_type addr,
+        m_tag_array->probe( block_addr, cache_index, mf, true);
+        process_tag_probe( wr, probe_status, addr, cache_index, mf, time, events );
+          >>>>>  data_cache::rd_miss_base( new_addr_type addr,
+
+
+src/gpgpu-sim/gpu-cache.cc
+data_cache::rd_miss_base( new_addr_type addr,
+
+src/gpgpu-sim/gpu-cache.cc
+data_cache::process_tag_probe( bool wr,
+
+   probe_status == HIT_RESERVED,   access_status == MISS  ???????????????????
+
+src/gpgpu-sim/gpu-cache.cc
+void baseline_cache::fill(mem_fetch *mf, unsigned time){
+
+src/abstract_hardware_model.h
+struct ldst_data_alvin {
+
+src/gpgpu-sim/shader.cc
+extern memory_space *alvin_mem;
+extern ptx_thread_info *alvin_thread;
+extern ptx_instruction *alvin_pI;
+extern ptx_reg_t alvin_wdata;
+
+
+/home/alvin/ws/limonite5/gsd/./src/gpgpu-sim/shader.cc
+                    m_pending_writes[inst.warp_id()][inst.out[r]]--; 
+
+src/gpgpu-sim/shader.cc
+void simt_core_cluster::core_cycle()
+
+src/gpgpu-sim/shader.cc
+void simt_core_cluster::icnt_cycle()
+
+src/gpgpu-sim/shader.cc
+void shader_core_ctx::cycle()
+
+src/gpgpu-sim/shader.h
+    shader_core_mem_fetch_allocator( unsigned core_id, unsigned cluster_id, const memory_config *config )
+
+src/gpgpu-sim/gpu-cache.cc
+void data_cache::flush() {
+
+src/gpgpu-sim/mem_fetch.h
+   void set_reply() 
+
+L1_WRBK_ACC
+L2_WRBK_ACC
+
+src/gpgpu-sim/dram.cc
+void dram_t::cycle()
+
+src/gpgpu-sim/shader.cc
+       m_fence_stores = 0;
+
+src/gpgpu-sim/mem_fetch.h
+   //bool m_fence_flush_wb;  // needed for doing acks for fence triggered flushes
+
+
+b ldst_unit::process_memory_access_queue_l1cache(l1_cache*, warp_inst_t&) if gpu_sim_cycle > 652
+b shader.cc:2692 if (gpu_sim_cycle > 652) && (m_core->get_sid() == 0)
+b shader.cc:3419 if (gpu_sim_cycle > 652) && (m_sid == 0)
+
+src/gpgpu-sim/gpu-sim.cc
+void gpgpu_sim::dump_pipeline( int mask, int s, int m ) const
+
+src/gpgpu-sim/shader.cc
+void shader_core_ctx::display_pipeline(FILE *fout, int print_mem, int mask ) const
+
+src/gpgpu-sim/shader.cc
+void simt_core_cluster::display_pipeline( unsigned sid, FILE *fout, int print_mem, int mask )
+
+
+
+// jul30 merging changes by Aditya
+
+---------------
+
+ptx_thread_info::init
+
