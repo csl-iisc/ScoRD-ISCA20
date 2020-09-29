@@ -1,14 +1,17 @@
 # ScoRD
 A Scoped Race Detector for GPUs.   
-Relevant code for race detection are kept in src/gpgpu-sim/scord.cc and src/gpgpu-sim/scord.h.   
+Relevant code for race detection are kept in [src/gpgpu-sim/scord.cc](src/gpgpu-sim/scord.cc) and [src/gpgpu-sim/scord.h](src/gpgpu-sim/scord.h).   
 The following additional options can be set in gpgpusim.config for race detection:
 * -scord_enabled (def=1) - Whether race detection is switched on
 * -scord_race_exit (def=0) - Whether to exit immediately on detection of a race
 * -scord_metadata_caching (def=0) - Whether to switch on software caching of metadata
 * -scord_granularity (def=4) - Granularity of tracking for race detector for normal, bytes per metadata entry for md caching
 
-Built on top of GPGPU-Sim, whose original README is kept intact below:   
+For further details refer to our paper:
+- A. K. Kamath, A. A. George, A. Basu. **ScoRD: A Scoped Race Detector for GPUs.** In _Proceedings of 47th IEEE/ACM International Symposium on Computer Architecture (ISCA), 2020._ [[Paper]](https://www.csa.iisc.ac.in/~arkapravab/papers/isca20_ScoRD.pdf) [[Video]](https://www.csa.iisc.ac.in/~arkapravab/papers/ScoRD_talk.mp4) [[Bibtex]](https://www.computer.org/csdl/api/v1/citation/bibtex/proceedings/1lsaqzyS9u8/09138958) 
 
+Built on top of GPGPU-Sim, whose original README is kept intact below:   
+## GPGPU-Sim
 Welcome to GPGPU-Sim, a cycle-level simulator modeling contemporary graphics
 processing units (GPUs) running GPU computing workloads written in CUDA or
 OpenCL. Also included in GPGPU-Sim is a performance visualization tool called
